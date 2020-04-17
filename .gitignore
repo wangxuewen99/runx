@@ -1,0 +1,15 @@
+*.swp
+*.tar.gz
+*ipynb
+*.zip
+*.pkl
+*.pyc
+*.bk
+*.pb
+*.orig
+
+*.egg-info/
+.idea/
+outputs/
+data/
+logs/
