@@ -3,11 +3,11 @@ import torch.nn as nn
 from collections import OrderedDict
 import numpy as np
 
-default_summary_modules = ['Conv2d',  'Add', 'Linear', 'ReLU', 'BatchNorm2d', 'InstanceNorm2d', 'MaxPool2d', 'AvgPool2d', 'Upsample']
+default_summary_modules = ['Conv2d',  'Add', 'Linear', 'ReLU', 'LeakyReLU', 'BatchNorm2d', 'InstanceNorm2d', 'MaxPool2d', 'AvgPool2d', 'Upsample']
 
 
 class SumX(object):
-    def __init__(self, show_range=False, summary_modules=default_summary_modules, fusion=True):
+    def __init__(self, show_range=False, summary_modules=default_summary_modules, fusion=False):
         self.hooks = []
         self.layers = []
         self.summary_modules = summary_modules
@@ -31,7 +31,7 @@ class SumX(object):
         if isinstance(output, tuple):
             output = output[0]
 
-        if isinstance(module, nn.BatchNorm2d) and self.layers[-1]['type']=='Conv2d' and self.fusion==True:
+        if self.fusion=True and isinstance(module, nn.BatchNorm2d) and self.layers[-1]['type']=='Conv2d':
             conv_weight = self.layers[-1]['weight']
             conv_bias = self.layers[-1]['bias']
             shift = module.bias
