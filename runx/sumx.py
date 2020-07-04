@@ -31,7 +31,7 @@ class SumX(object):
         if isinstance(output, tuple):
             output = output[0]
 
-        if self.fusion=True and isinstance(module, nn.BatchNorm2d) and self.layers[-1]['type']=='Conv2d':
+        if self.fusion==True and isinstance(module, nn.BatchNorm2d) and self.layers[-1]['type']=='Conv2d':
             conv_weight = self.layers[-1]['weight']
             conv_bias = self.layers[-1]['bias']
             shift = module.bias
