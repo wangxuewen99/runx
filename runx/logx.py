@@ -1,7 +1,5 @@
-import os
 import yaml
 from pathlib import Path
-import shutil
 import torch
 
 try:
@@ -25,8 +23,10 @@ class LogX(SummaryWriter):
 
         self.log_file = (self.log_dir / 'log.txt').open('a')
 
+        # initialize tensorboard
         super(LogX, self).__init__(self.log_dir)
 
+        # backup hyper-parameters and show it in tensorboard txt tab
         if hparams:
             if not isinstance(hparams, dict):
                 hparams = vars(hparams)
@@ -34,15 +34,16 @@ class LogX(SummaryWriter):
             with (self.log_dir / 'config.yaml').open('w') as f:
                 yaml.dump(hparams, f, sort_keys=False, width=200)
 
-            if self.writer is not None:
-                text = dict_to_md(hparams)
-                self.add_text('hparams', text)
+            text = dict_to_md(hparams)
+            self.add_text('hparams', text)
 
+    # show message to screen and write to log file
     def msg(self, msg):
         print(msg)
         self.log_file.write(msg + '\n')
         self.log_file.flush()
 
+    # save checkpoint to checkpoint directory name with 'checkpoint-idx.pth'
     def save_model(self, state_dict, idx):
         save_path = self.checkpoint_dir / f'checkpoint-{idx}.pth'
         torch.save(state_dict, save_path)
