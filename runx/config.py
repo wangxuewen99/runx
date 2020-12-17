@@ -12,8 +12,9 @@ def check_file_exist(filename):
 class Config(object):
     def __init__(self, cfg_dict=None, filename=None):
         assert (cfg_dict is None and filename is not None) or (cfg_dict is not None and filename is None), \
-            f'cfg_dict and filename only can set one.'
+            f'cfg_dict and filename only need one.'
 
+        # new _cfg_dict as a container of configures
         object.__setattr__(self, '_cfg_dict', dict())
         if cfg_dict is not None:
             if not isinstance(cfg_dict, dict):
@@ -37,14 +38,14 @@ class Config(object):
         if suffix not in ['.py', '.json', '.yaml']:
             raise IOError('Only py/json/yaml type are supported now.')
 
-        self.clear()
+        self.clear()    # clear Config status
         if suffix == '.json':
             with open(filename, 'r') as f:
                 cfg_dict = json.load(f)
-        elif suffix == '.yaml':
+        elif suffix in ['.yaml', '.yml']:
             with open(filename, 'r') as f:
                 cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
-        elif suffix == '.py':
+        elif suffix == '.py':   # load configures from py file
             config_dir = ospath.dirname(filename)
             sys.path.insert(0, config_dir)
             module_name = ospath.splitext(ospath.basename(filename))[0]
@@ -64,14 +65,14 @@ class Config(object):
 
     def dump(self, filename):
         suffix = ospath.splitext()[-1]
-        if suffix not in ['.json', '.yaml']:
+        if suffix not in ['.json', '.yaml', '.yml']:
             raise IOError('Only json/yaml type are supported now.')
 
         if suffix == '.json':
             with open(filename, 'w') as f:
                 json.dump(self._cfg_dict, f)
 
-        elif suffix == '.yaml':
+        elif suffix in ['.yaml', '.yml']:
             with open(filename, 'w') as f:
                 yaml.dump(self._cfg_dict, f, sort_keys=False, width=256)
         else:
