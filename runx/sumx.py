@@ -59,21 +59,30 @@ class SumX(object):
 
         param_num = 0
         flops = 0
+        macs = 0
         if hasattr(module, 'weight') and module.weight is not None:
             if isinstance(module, nn.Conv2d):
-                _, _, output_height, output_width = output.size()
+                _, output_chn, output_height, output_width = output.size()
+                _, input_chn, input_height, input_width = input[0].size()
                 output_channel, input_channel, kernel_height, kernel_width = module.weight.size()
                 flops = output_channel * output_height * output_width * input_channel * kernel_height * kernel_width
+                macs = output_height * output_width * output_chn + \
+                    input_height * input_width * input_chn + \
+                    kernel_height * kernel_width * input_chn * output_chn
 
             if isinstance(module, nn.Linear):
                 input_num, output_num = module.weight.size()
                 flops = input_num * output_num
+                macs = input_num * output_num + input_num + output_num
 
             param_num += module.weight.numel()
             layer['trainable'] = module.weight.requires_grad
             layer['weight'] = module.weight
         else:
             layer['weight'] = None
+            inp_size = torch.tensor(input[0].size()[1:])
+            out_size = torch.tensor(output.size()[1:])
+            macs = inp_size.pow(2).sum() + out_size.pow(2).sum()
 
         if hasattr(module, 'bias') and module.bias is not None:
             param_num += module.bias.numel()
@@ -84,6 +93,7 @@ class SumX(object):
 
         layer['param_num'] = param_num
         layer['flops'] = flops
+        layer['macs'] = macs
         self.layers.append(layer)
 
     def summarize(self, model, *args, **kwargs):
@@ -105,30 +115,34 @@ class SumX(object):
     def print_info(self):
         separator = '='*60
         print(separator)
-        header = '{:<30}{:<12}{:<18}{:<18}{:<18}{:<12}{:<12}'.format('Layer', 'Type', 'Input', 'Output', 'Kernel', 'Params #', 'FLOPS #')
+        header = '{:<30}{:<12}{:<18}{:<18}{:<18}{:<12}{:<12}{:<12}'.format('Layer', 'Type', 'Input', 'Output', 'Kernel', 'Params #', 'FLOPS #', 'MACS #')
         print(header)
 
         print(separator)
         total_params = 0
         trainable_params = 0
         total_flops = 0
+        total_macs = 0
         for info in self.layers:
             input_shape = str(list(info['input'].size()))
             output_shape = str(list(info['output'].size()))
             kernel_shape = str(list(info['weight'].size())) if info['weight'] is not None else 'None'
             params = '{0:,}'.format(info['param_num'])
             flops = str('{:,}'.format(info['flops']))
-            line = '{:<30}{:<12}{:<18}{:<18}{:<18}{:<12}{:<12}'.format(info['name'], info['type'], input_shape, output_shape, kernel_shape, params, flops)
+            macs = str('{:,}'.format(info['macs']))
+            line = '{:<30}{:<12}{:<18}{:<18}{:<18}{:<12}{:<12}{:<12}'.format(info['name'], info['type'], input_shape, output_shape, kernel_shape, params, flops, macs)
             print(line)
             total_params += info['param_num']
             if 'trainable' in info and info['trainable'] == True:
                 trainable_params += info['param_num']
             total_flops += info['flops']
+            total_macs += info['macs']
         print(separator)
         print('Total params: {0:,}'.format(total_params))
         print('Trainable params: {0:,}'.format(trainable_params))
         print('Non-trainable params: {0:,}'.format(total_params - trainable_params))
         print('Total FLOPS: {0:,}'.format(total_flops))
+        print('Total MACS: {0:,}'.format(total_macs))
         print(separator)
 
     def print_range(self):
