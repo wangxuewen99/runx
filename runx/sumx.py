@@ -3,11 +3,10 @@ import torch.nn as nn
 from collections import OrderedDict
 import numpy as np
 
-default_summary_modules = ['Conv2d',  'Add', 'Linear', 'ReLU', 'LeakyReLU', 'BatchNorm2d', 'InstanceNorm2d', 'MaxPool2d', 'AvgPool2d', 'Upsample']
-
+default_summary_modules = ['Conv2d',  'Add', 'Linear', 'ReLU', 'ReLU6', 'LeakyReLU', 'BatchNorm2d', 'InstanceNorm2d', 'MaxPool2d', 'AvgPool2d', 'Upsample']
 
 class SumX(object):
-    def __init__(self, show_range=False, summary_modules=default_summary_modules, fusion=False):
+    def __init__(self, show_range=False, summary_modules=default_summary_modules, fusion=True):
         self.hooks = []
         self.layers = []
         self.summary_modules = summary_modules
@@ -19,17 +18,17 @@ class SumX(object):
         handle = module.register_forward_hook(self._summary_hook)
         self.hooks.append(handle)
 
-    def _summary_hook(self, module, input, output):
+    def _summary_hook(self, module, inputs, outputs):
         module_type = module.__class__.__name__
         if module_type not in self.summary_modules:
             return
         epsilon = 1.0e-6
-
+        
         if module_type == 'Conv2d' and not isinstance(module, nn.Conv2d):
             return
 
-        if isinstance(output, tuple):
-            output = output[0]
+        if not isinstance(outputs, tuple):
+            outputs = [outputs]
 
         if self.fusion==True and isinstance(module, nn.BatchNorm2d) and self.layers[-1]['type']=='Conv2d':
             conv_weight = self.layers[-1]['weight']
@@ -47,46 +46,51 @@ class SumX(object):
             conv_weight = conv_weight * (scale / std).view(-1, 1, 1, 1)
             self.layers[-1]['weight'] = conv_weight
             self.layers[-1]['bias'] = conv_bias
-            self.layers[-1]['output'] =  output
+            self.layers[-1]['output'] =  outputs[0]
             return
 
         name = self.id_to_name[str(id(module))]
         layer = OrderedDict()
         layer['name'] = name
         layer['type'] = module_type
-        layer['input'] = input[0]
-        layer['output'] = output
+        layer['input'] = inputs[0]
+        layer['output'] = outputs[0]
 
         param_num = 0
         flops = 0
         macs = 0
+        
+        for output in outputs:
+            out_size = torch.tensor(output.size()[1:])
+            macs += out_size.prod()
+        for input in inputs:
+            inp_size = torch.tensor(input.size()[1:])
+            macs += inp_size.prod()
+        
         if hasattr(module, 'weight') and module.weight is not None:
             if isinstance(module, nn.Conv2d):
-                _, output_chn, output_height, output_width = output.size()
-                _, input_chn, input_height, input_width = input[0].size()
+                groups = module.groups
+                _, _, output_height, output_width = outputs[0].size()
+                _, _, input_height, input_width = inputs[0].size()
                 output_channel, input_channel, kernel_height, kernel_width = module.weight.size()
                 flops = output_channel * output_height * output_width * input_channel * kernel_height * kernel_width
-                macs = output_height * output_width * output_chn + \
-                    input_height * input_width * input_chn + \
-                    kernel_height * kernel_width * input_chn * output_chn
-
+                macs += kernel_height * kernel_width * input_channel * output_channel
+                
             if isinstance(module, nn.Linear):
                 input_num, output_num = module.weight.size()
                 flops = input_num * output_num
-                macs = input_num * output_num + input_num + output_num
+                macs += input_num * output_num
 
             param_num += module.weight.numel()
             layer['trainable'] = module.weight.requires_grad
             layer['weight'] = module.weight
         else:
             layer['weight'] = None
-            inp_size = torch.tensor(input[0].size()[1:])
-            out_size = torch.tensor(output.size()[1:])
-            macs = inp_size.pow(2).sum() + out_size.pow(2).sum()
 
         if hasattr(module, 'bias') and module.bias is not None:
             param_num += module.bias.numel()
             flops += module.bias.numel()
+            macs += module.bias.numel()
             layer['bias'] = module.bias
         else:
             layer['bias'] = None
