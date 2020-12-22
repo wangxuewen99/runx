@@ -43,7 +43,8 @@ def draw_box(image, boxes, color, valid_flags=None, format='CHW'):
     elif image.dim() == 4 and len(format) == 4:
         batch_size = image.size(0)
         for k in range(batch_size):
-            single_draw_box(image[k], boxes[k], color, valid_flags[k], format[1:])
+            valid_flag = valid_flags[k] if valid_flags is not None else None
+            single_draw_box(image[k], boxes[k], color, valid_flag, format[1:])
     else:
         raise Exception('invalid image data format.')
 
@@ -64,7 +65,7 @@ def single_draw_point(image, pts, color, valid_flags=None, format='CHW'):
     else:
         raise Exception('invalid image data format.')
 
-    pts = 0.5*(pts + 1)*torch.tensor([[[width, height]]], device=pts.device)
+    pts = 0.5*(pts + 1)*torch.tensor([[width, height]], device=pts.device)
     pts = pts.long()
     x = torch.clamp(pts[:, 0], 1, width-2)
     y = torch.clamp(pts[:, 1], 1, height-2)
@@ -92,7 +93,8 @@ def draw_point(image, pts, color, valid_flags=None, format='CHW'):
     elif image.dim() == 4 and len(format) == 4:
         batch_size = image.size(0)
         for k in range(batch_size):
-            single_draw_point(image[k], pts[k], color, valid_flags[k], format[1:])
+            valid_flag = valid_flags[k] if valid_flags is not None else None
+            single_draw_point(image[k], pts[k], color, valid_flag, format[1:])
     else:
         raise Exception('invalid image data format.')
 
