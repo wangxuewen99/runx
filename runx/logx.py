@@ -1,4 +1,4 @@
-import yaml
+import json
 from pathlib import Path
 import torch
 
@@ -31,8 +31,8 @@ class LogX(SummaryWriter):
             if not isinstance(hparams, dict):
                 hparams = vars(hparams)
 
-            with (self.log_dir / 'config.yaml').open('w') as f:
-                yaml.dump(hparams, f, sort_keys=False, width=200)
+            with (self.log_dir / 'config.json').open('w') as f:
+                json.dump(hparams, f, indent="    ")
 
             text = dict_to_md(hparams)
             self.add_text('hparams', text)
