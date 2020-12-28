@@ -4,7 +4,7 @@ Utils For Runing a Deep Learning Experiment.
 
 # Installation
 ```
-> git clone https://git.yy.com/wangxuewen/runx
+> git clone https://github.com/GKCsdfsGKC/runx.git
 > cd runx
 > pip install --user .
 
