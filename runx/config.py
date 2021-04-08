@@ -70,7 +70,7 @@ class Config(object):
 
         if suffix == '.json':
             with open(filename, 'w') as f:
-                json.dump(self._cfg_dict, f)
+                json.dump(self._cfg_dict, f, indent=4)
 
         elif suffix in ['.yaml', '.yml']:
             with open(filename, 'w') as f:
